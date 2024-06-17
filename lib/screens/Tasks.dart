@@ -4,7 +4,7 @@ import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:testing/widgets/ReportModal.dart';
 import 'package:testing/widgets/Sidenav.dart';
-import '../widgets/CompleteTaskModal.dart';
+import '../widgets/CameraWidget.dart';
 
 class TasksScreen extends StatefulWidget {
   @override
@@ -114,19 +114,31 @@ class _TasksScreenState extends State<TasksScreen> {
     });
   }
 
-  void _openImageCaptureModal(BuildContext context, dynamic item) {
-    showModalBottomSheet(
-      context: context,
-      builder: (_) {
-        return ImageCaptureModal(
-          onComplete: () {
-            _removeItemFromList(item);
-          },
-          item: item, // Pass the item here
-        );
-      },
-    );
-  }
+  void _openImageCaptureModal(BuildContext context, dynamic item) async {
+  showModalBottomSheet(
+    context: context,
+    builder: (_) {
+      return CameraWidget(
+        onComplete: (String imagePath) async {  // Mark this lambda as async
+          String apiUrl = 'http://localhost:3000/upload';
+          var request = http.MultipartRequest('POST', Uri.parse(apiUrl));
+          request.files.add(await http.MultipartFile.fromPath('image', imagePath));  // Now this await is valid
+          var response = await request.send();
+
+          if (response.statusCode == 200) {
+            print('Image uploaded successfully');
+          } else {
+            print('Image upload failed with status: ${response.statusCode}');
+          }
+          SharedPreferences.getInstance().then((prefs) {
+            prefs.setString('fileName', imagePath);
+          });
+          _removeItemFromList(item);
+        },
+      );
+    },
+  );
+}
 
   @override
   Widget build(BuildContext context) {
